@@ -1,4 +1,4 @@
-# Add at the start of the script
+# Setup logging
 $logPath = "C:\INTUNE_TEST"
 if (-not (Test-Path $logPath)) {
     New-Item -ItemType Directory -Path $logPath -Force | Out-Null
@@ -11,6 +11,27 @@ function Write-Log {
     Write-Output $logMessage
     Add-Content -Path $logFile -Value $logMessage
 }
+
+function Remove-OldLogs {
+    param (
+        [string]$LogPath,
+        [int]$DaysToKeep = 2
+    )
+    
+    try {
+        $cutOffDate = (Get-Date).AddDays(-$DaysToKeep)
+        Get-ChildItem -Path $LogPath -Filter "RegionalSettings_*.log" | 
+            Where-Object { $_.LastWriteTime -lt $cutOffDate } | 
+            Remove-Item -Force
+        Write-Log "Deleted logs older than $DaysToKeep days"
+    }
+    catch {
+        Write-Warning "Failed to clean up old logs: $_"
+    }
+}
+
+# Clean up old logs
+Remove-OldLogs -LogPath $logPath
 
 # Check for admin rights
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
